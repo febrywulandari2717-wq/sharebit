@@ -1,0 +1,80 @@
+:root{--cream:#fbf6ec;--paper:#fffdf8;--ink:#2a2118;--muted:#7a6c5d;--line:#e8dcc8;--terra:#c8502d;--terra-dark:#a63f20;--green:#24503a;--green-soft:#e3eee6;--sun:#f2b94b}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--ink);font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+main{flex:1}
+h1,h2,h3,h4,.brand{font-family:'Fraunces',Georgia,'Times New Roman',serif;letter-spacing:-.01em}
+a{color:var(--terra)}a:hover{color:var(--terra-dark)}
+.navbar-sb{background:var(--paper);border-bottom:1px solid var(--line)}
+.brand{font-weight:700;font-size:1.45rem;color:var(--green)!important;text-decoration:none}
+.brand span{color:var(--terra)}
+.nav-link{color:var(--ink)!important;font-weight:500}
+.nav-link.active{color:var(--terra)!important;border-bottom:2px solid var(--terra)}
+.btn-terra{background:var(--terra);border-color:var(--terra);color:#fff;font-weight:600}
+.btn-terra:hover,.btn-terra:focus{background:var(--terra-dark);border-color:var(--terra-dark);color:#fff}
+.btn-green{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+.btn-green:hover{background:#1b3d2c;border-color:#1b3d2c;color:#fff}
+.btn-outline-green{border-color:var(--green);color:var(--green);font-weight:600}
+.btn-outline-green:hover{background:var(--green);color:#fff}
+.card-sb{background:var(--paper);border:1px solid var(--line);border-radius:14px}
+.food-card{overflow:hidden;transition:transform .15s,box-shadow .15s;height:100%}
+.food-card:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(60,40,10,.12)}
+.food-card img,.food-hero-img{width:100%;object-fit:cover;background:var(--green-soft)}
+.food-card img{height:180px}
+.food-hero-img{height:320px;border-radius:14px}
+.hero{background:linear-gradient(135deg,var(--green) 0%,#2f6a4d 100%);color:#fff;border-radius:22px;padding:3.5rem 2.5rem;position:relative;overflow:hidden}
+.hero h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.08;font-weight:700}
+.hero h1 em{color:var(--sun);font-style:italic}
+.hero p{max-width:34rem;opacity:.92;font-size:1.1rem}
+.hero .plate{position:absolute;right:-60px;bottom:-60px;width:280px;height:280px;border-radius:50%;border:34px solid rgba(255,255,255,.08)}
+.step-num{width:42px;height:42px;border-radius:50%;background:var(--sun);color:var(--ink);font-weight:700;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif}
+.badge-st{font-weight:600;font-size:.78rem;padding:.38em .7em;border-radius:99px}
+.st-pending{background:#fff1cf;color:#8a5a00}.st-approved{background:#dcefe3;color:#1f5a38}.st-scheduled{background:#dbe8f7;color:#1e4a80}
+.st-completed{background:#cfe9d8;color:#14502c}.st-rejected,.st-cancelled{background:#f6dcd6;color:#8f2c18}.st-expired{background:#ece6dc;color:#6b5d4c}
+.st-available{background:#dcefe3;color:#1f5a38}.st-out_of_stock{background:#f6dcd6;color:#8f2c18}.st-closed{background:#ece6dc;color:#6b5d4c}
+.st-active{background:#dcefe3;color:#1f5a38}.st-inactive{background:#f6dcd6;color:#8f2c18}
+.stat{padding:1.1rem 1.3rem}.stat .n{font-family:'Fraunces',serif;font-size:2rem;font-weight:700;color:var(--green);line-height:1}
+.stat .l{color:var(--muted);font-size:.85rem}
+.table-sb{--bs-table-bg:transparent}.table-sb thead th{color:var(--muted);font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--line)}
+.table-sb td{vertical-align:middle;border-color:var(--line)}
+.form-control:focus,.form-select:focus{border-color:var(--terra);box-shadow:0 0 0 .2rem rgba(200,80,45,.18)}
+.nav-tabs .nav-link{border:0;color:var(--muted)!important}.nav-tabs .nav-link.active{border-bottom:3px solid var(--terra);background:transparent;color:var(--ink)!important}
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted)}.empty .big{font-size:2.6rem}
+.toast-wrap{position:fixed;right:1rem;bottom:1rem;z-index:2000;display:flex;flex-direction:column;gap:.5rem}
+.toast-sb{background:var(--ink);color:#fff;padding:.75rem 1.1rem;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:340px;animation:in .2s}
+.toast-sb.ok{background:var(--green)}.toast-sb.err{background:var(--terra-dark)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.spinner-sb{width:34px;height:34px;border:4px solid var(--line);border-top-color:var(--terra);border-radius:50%;animation:spin .8s linear infinite;margin:2.5rem auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.timeline{list-style:none;padding-left:0;border-left:2px solid var(--line);margin-left:.5rem}
+.timeline li{padding:0 0 .9rem 1rem;position:relative}.timeline li:before{content:'';position:absolute;left:-7px;top:.35rem;width:12px;height:12px;border-radius:50%;background:var(--terra)}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:.9rem;padding:1.4rem 0;margin-top:3rem}
+@media(max-width:576px){.hero{padding:2.2rem 1.4rem}.food-hero-img{height:220px}}
+
+/* Perbaikan modal Bagikan Makanan ShareBite */
+#foodModal .modal-dialog {
+  height: calc(100% - 1rem);
+  margin: 0.5rem auto;
+}
+
+#foodModal .modal-content {
+  max-height: 100%;
+  overflow: hidden;
+}
+
+#foodModal #foodForm {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+#foodModal .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+#foodModal .modal-footer {
+  flex-shrink: 0;
+  background: #fff;
+  border-top: 1px solid #dee2e6;
+}

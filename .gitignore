@@ -1,0 +1,28 @@
+.env
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+vendor/
+keys/jwt_private.pem
+services/food-service/uploads/foods/*
+!services/food-service/uploads/foods/.gitkeep
+services/donation-service/storage/logs/*.log
+frontend/mobile/.expo/
+*.log
+.DS_Store
+
+# Local secrets and database backups
+*.env
+.env.*
+!*.env.example
+keys/*.pem
+keys/*.key
+*_backup.sql
+migrations_backup.txt
+*.sql
+
+# Keep local key directory out of Git
+keys/
