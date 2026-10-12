@@ -1,7 +1,6 @@
 # ShareBite
 
-Platform berbagi makanan berlebih yang masih layak dikonsumsi — tugas Cloud Computing.
-
+Platform berbagi makanan berlebih yang masih layak dikonsumsi
 | Bagian | Teknologi | Lokasi | Port |
 |---|---|---|---|
 | Website | HTML5, CSS3, JavaScript, Bootstrap 5 | `frontend/web` | 5500 |
@@ -20,5 +19,3 @@ Akun: admin `admin@sharebite.local` / `Admin12345`; demo `donor@sharebite.local`
 
 Panduan lengkap: [setup-local](docs/setup-local.md) · [arsitektur](docs/architecture.md) · [kontrak API](docs/api-contracts.md) · [database](docs/database-design.md) · [pengujian](docs/testing.md) · [demo](docs/demo-guide.md) · [checklist](docs/checklist.md)
 
-## Status verifikasi (jujur)
-Food Service (31 tes), Request Service (41 tes), dan alur end-to-end (61 pemeriksaan) lulus pada MariaDB nyata. **Donation Service (Laravel) belum dapat dijalankan oleh pembuat paket** karena tidak ada akses ke Packagist; kode dan tesnya sudah ditulis dan lolos pemeriksaan sintaks, tetapi perlu Anda jalankan (`composer install`, `php artisan test`). Website dan Android belum dicoba di browser/perangkat. Rincian di [docs/testing.md](docs/testing.md).
