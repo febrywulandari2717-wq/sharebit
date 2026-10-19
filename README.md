@@ -31,6 +31,4 @@ Pengingat pengambilan dapat dijalankan melalui `php artisan schedule:work` (opsi
 - [Kontrak API](docs/api-contracts.md)
 - [Database](docs/database-design.md)
 - [Setup lokal](docs/setup-local.md)
-- [Pengujian](docs/testing.md)
 - [Panduan demo](docs/demo-guide.md)
-- [Checklist](docs/checklist.md)
