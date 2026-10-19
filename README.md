@@ -1,24 +1,24 @@
 # ShareBite
 
-Platform berbagi makanan berlebih yang masih layak dikonsumsi — tugas Cloud Computing.
+Platform food-sharing: marketplace makanan berlebih, manajemen donasi, reservasi & pengambilan, komunitas (kampanye, poin, badge, peringkat), notifikasi, analitik dampak, serta moderasi admin. Proyek mata kuliah Cloud Computing.
 
 | Bagian | Teknologi | Lokasi | Port |
 |---|---|---|---|
-| Website | HTML5, CSS3, JavaScript, Bootstrap 5 | `frontend/web` | 5500 |
-| Android | React Native + Expo (SDK 57) | `frontend/mobile` | – |
+| Website | HTML5, CSS3, JavaScript (tanpa framework; design system sendiri) | `frontend/web` | 8080 |
 | Food Service | Python, Flask, SQLAlchemy | `services/food-service` | 5001 |
 | Request Service | Node.js, Express | `services/request-service` | 5002 |
-| Donation + Identity Service | PHP, Laravel 12 | `services/donation-service` | 5003 |
-| Database | MySQL XAMPP, 3 database terpisah | – | 3306 |
+| Donation + Identity Service | PHP, Laravel 12 | `services/donation-service` | 8003 |
+| Android | React Native + Expo SDK 57 (belum diperbarui pada tahap ini) | `frontend/mobile` | – |
+| Database | MySQL XAMPP — 3 database terpisah | – | 3306 |
 
-## Mulai cepat (Windows)
-1. Start **MySQL** di XAMPP.
-2. Jalankan `setup.bat` (sekali).
-3. Jalankan `start-all.bat` → buka <http://localhost:5500>.
+## Menjalankan (Windows)
+- **Sudah punya versi sebelumnya?** Ekstrak zip *menimpa* folder lama (file `.env`, `vendor/`, `node_modules/`, `.venv/`, kunci di `keys/`, dan data database tidak ikut ditimpa/dihapus), lalu jalankan **`update.bat`** (sinkron `.env`, `composer install`, `npm install`, `php artisan migrate`). Setelah itu `start-all.bat`.
+- **Instalasi baru:** Start MySQL XAMPP → `setup.bat` → `start-all.bat` (membuka http://127.0.0.1:8080).
 
-Akun: admin `admin@sharebite.local` / `Admin12345`; demo `donor@sharebite.local` & `penerima@sharebite.local` / `Rahasia123`.
+Akun: admin `admin@sharebite.local` / `Admin12345`; demo `donor@sharebite.local`, `penerima@sharebite.local` / `Rahasia123`. Pengingat pengambilan: `php artisan schedule:work` (opsional) atau `php artisan donations:remind`.
 
-Panduan lengkap: [setup-local](docs/setup-local.md) · [arsitektur](docs/architecture.md) · [kontrak API](docs/api-contracts.md) · [database](docs/database-design.md) · [pengujian](docs/testing.md) · [demo](docs/demo-guide.md) · [checklist](docs/checklist.md)
+## Dokumentasi
+[Laporan pengembangan](docs/laporan-pengembangan.md) · [Arsitektur](docs/architecture.md) · [Kontrak API](docs/api-contracts.md) · [Database](docs/database-design.md) · [Setup lokal](docs/setup-local.md) · [Pengujian](docs/testing.md) · [Panduan demo](docs/demo-guide.md) · [Checklist](docs/checklist.md)
 
-## Status verifikasi (jujur)
-Food Service (31 tes), Request Service (41 tes), dan alur end-to-end (61 pemeriksaan) lulus pada MariaDB nyata. **Donation Service (Laravel) belum dapat dijalankan oleh pembuat paket** karena tidak ada akses ke Packagist; kode dan tesnya sudah ditulis dan lolos pemeriksaan sintaks, tetapi perlu Anda jalankan (`composer install`, `php artisan test`). Website dan Android belum dicoba di browser/perangkat. Rincian di [docs/testing.md](docs/testing.md).
+## Status verifikasi
+Food 39 · Request 47 · Laravel 49 tes lulus; E2E lintas service 102 pemeriksaan lulus; 44 uji pemuatan halaman website lulus. Interaksi di browser sungguhan dan aplikasi Android belum diuji manual — lihat [docs/testing.md](docs/testing.md).

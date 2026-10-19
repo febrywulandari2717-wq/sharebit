@@ -71,6 +71,8 @@ class AuthController extends Controller
             'address' => ['sometimes', 'nullable', 'string', 'max:255'],
             'current_password' => ['required_with:new_password', 'string'],
             'new_password' => ['nullable', 'string', 'min:8', 'max:100', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'],
+            'notify_enabled' => ['sometimes', 'boolean'],
+            'leaderboard_visible' => ['sometimes', 'boolean'],
         ]);
 
         if (! empty($data['new_password'])) {
@@ -79,7 +81,7 @@ class AuthController extends Controller
             }
             $user->password_hash = Hash::make($data['new_password']);
         }
-        foreach (['name', 'phone', 'address'] as $field) {
+        foreach (['name', 'phone', 'address', 'notify_enabled', 'leaderboard_visible'] as $field) {
             if (array_key_exists($field, $data)) {
                 $user->{$field} = $data[$field];
             }

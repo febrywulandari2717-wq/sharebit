@@ -22,6 +22,8 @@ class Food(db.Model):
     pickup_end = db.Column(db.DateTime, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
 
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     allergens = db.Column(db.String(255), nullable=True)
     storage_info = db.Column(db.String(255), nullable=True)
     status = db.Column(
@@ -63,6 +65,8 @@ class Food(db.Model):
             "pickup_start": iso(self.pickup_start),
             "pickup_end": iso(self.pickup_end),
             "expires_at": iso(self.expires_at),
+            "latitude": self.latitude,
+            "longitude": self.longitude,
             "allergens": self.allergens,
             "storage_info": self.storage_info,
             "status": self.status,

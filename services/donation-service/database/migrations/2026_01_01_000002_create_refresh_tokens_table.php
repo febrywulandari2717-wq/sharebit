@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('refresh_tokens')) {
+            return; // database lama yang sudah memiliki tabel ini
+        }
+
         Schema::create('refresh_tokens', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id');

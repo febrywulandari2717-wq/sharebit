@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Donation;
+use App\Services\GamificationService;
+use App\Services\NotificationService;
 use App\Services\RequestServiceClient;
 use App\Support\ApiErrors;
 use Carbon\Carbon;
@@ -13,7 +15,11 @@ use Illuminate\Support\Str;
 
 class DonationController extends Controller
 {
-    public function __construct(private RequestServiceClient $requests) {}
+    public function __construct(
+        private RequestServiceClient $requests,
+        private NotificationService $notifications,
+        private GamificationService $game,
+    ) {}
 
     private function find(string $id, $user): Donation
     {
@@ -75,6 +81,8 @@ class DonationController extends Controller
         }
 
         $this->sync($donation, 'scheduled', 'Donasi dijadwalkan.');
+        $this->notifications->notify($donation->recipient_id, 'donation_scheduled', 'Pengambilan dijadwalkan',
+            'Ambil di '.$donation->pickup_location.' pada '.$donation->pickup_time->timezone('Asia/Jakarta')->format('d M Y H:i').' WIB.', 'donations.html');
 
         return response()->json(['data' => $donation->fresh()->toApiArray()], 201);
     }
@@ -155,16 +163,28 @@ class DonationController extends Controller
             if ($isRecipient && ! $d->recipient_confirmed_at) {
                 $d->recipient_confirmed_at = now();
             }
+            $nowCompleted = false;
             if ($d->donor_confirmed_at && $d->recipient_confirmed_at) {
                 $d->status = 'completed';
+                $d->completed_at = now();
+                $nowCompleted = true;
             }
             $d->save();
+            if ($nowCompleted) {
+                $this->game->awardForCompletedDonation($d); // satu kali per donasi (unique key)
+            }
 
             return $d;
         });
 
+        $other = $donation->donor_id === $user->id ? $donation->recipient_id : $donation->donor_id;
         if ($donation->status === 'completed') {
             $this->sync($donation, 'completed', 'Serah terima selesai.');
+            foreach ([$donation->donor_id, $donation->recipient_id] as $uid) {
+                $this->notifications->notify($uid, 'donation_completed', 'Donasi selesai', 'Serah terima telah dikonfirmasi kedua pihak. Terima kasih!', 'donations.html');
+            }
+        } elseif ($donation->donor_id === $user->id || $donation->recipient_id === $user->id) {
+            $this->notifications->notify($other, 'donation_confirm', 'Menunggu konfirmasi Anda', 'Pihak lain sudah mengonfirmasi serah terima.', 'donations.html');
         }
 
         return response()->json(['data' => $donation->fresh()->toApiArray()]);
@@ -192,6 +212,11 @@ class DonationController extends Controller
         });
 
         $this->sync($donation, 'cancelled', $data['reason']);
+        foreach (array_unique([$donation->donor_id, $donation->recipient_id]) as $uid) {
+            if ($uid !== $user->id) {
+                $this->notifications->notify($uid, 'donation_cancelled', 'Donasi dibatalkan', 'Alasan: '.$data['reason'], 'donations.html');
+            }
+        }
 
         return response()->json(['data' => $donation->fresh()->toApiArray()]);
     }

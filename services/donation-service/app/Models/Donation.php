@@ -15,7 +15,7 @@ class Donation extends Model
     protected $fillable = [
         'id', 'request_id', 'food_id', 'donor_id', 'recipient_id', 'quantity',
         'pickup_time', 'pickup_location', 'instructions', 'status',
-        'donor_confirmed_at', 'recipient_confirmed_at', 'cancel_reason', 'sync_pending',
+        'donor_confirmed_at', 'recipient_confirmed_at', 'cancel_reason', 'sync_pending', 'completed_at', 'reminded_at',
     ];
 
     protected $casts = [
@@ -27,6 +27,8 @@ class Donation extends Model
         'donor_confirmed_at' => 'datetime',
         'recipient_confirmed_at' => 'datetime',
         'sync_pending' => 'boolean',
+        'completed_at' => 'datetime',
+        'reminded_at' => 'datetime',
     ];
 
     private static function iso($value): ?string
@@ -49,6 +51,7 @@ class Donation extends Model
             'status' => $this->status,
             'donor_confirmed_at' => self::iso($this->donor_confirmed_at),
             'recipient_confirmed_at' => self::iso($this->recipient_confirmed_at),
+            'completed_at' => self::iso($this->completed_at),
             'cancel_reason' => $this->cancel_reason,
             'created_at' => self::iso($this->created_at),
         ];

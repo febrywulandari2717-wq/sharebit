@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\RefreshToken;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Support\ApiErrors;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -55,7 +56,7 @@ class UserController extends Controller
         return response()->json(['data' => ['id' => $user->id, 'name' => $user->name]]);
     }
 
-    public function update(Request $request, int $id)
+    public function update(Request $request, int $id, AuditService $audit)
     {
         $me = $request->attributes->get('user');
         $user = User::find($id) ?? ApiErrors::abort('NOT_FOUND', 'Pengguna tidak ditemukan.', 404);
@@ -80,10 +81,20 @@ class UserController extends Controller
                 RefreshToken::where('user_id', $user->id)->whereNull('revoked_at')->update(['revoked_at' => now()]);
             }
         }
+        $oldRole = $user->role;
         if (isset($data['role'])) {
             $user->role = $data['role'];
         }
+        $wasChanged = $user->isDirty(['is_active', 'role']);
         $user->save();
+        if ($wasChanged) {
+            if (array_key_exists('is_active', $data)) {
+                $audit->log($me->id, $me->role, $user->is_active ? 'user.activate' : 'user.deactivate', 'user', $user->id, ['email' => $user->email], $request->ip());
+            }
+            if (isset($data['role']) && $oldRole !== $user->role) {
+                $audit->log($me->id, $me->role, 'user.role_change', 'user', $user->id, ['from' => $oldRole, 'to' => $user->role], $request->ip());
+            }
+        }
 
         return response()->json(['data' => $user->toApiArray()]);
     }

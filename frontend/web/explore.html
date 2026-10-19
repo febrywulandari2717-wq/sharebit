@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ShareBite — platform berbagi makanan berlebih yang masih layak dikonsumsi.">
+<title>Jelajahi makanan · ShareBite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="css/style.css" rel="stylesheet">
+</head>
+<body data-layout="public" data-title="Jelajahi makanan">
+<div id="view">
+
+<div class="page-head"><div><h1>Jelajahi makanan</h1><p class="muted" style="margin:0">Makanan yang masih tersedia untuk diambil.</p></div>
+<div class="row" role="group" aria-label="Tampilan"><button class="chip" data-view="grid" aria-pressed="true">Grid</button><button class="chip" data-view="list" aria-pressed="false">Daftar</button><button class="chip" data-view="map" aria-pressed="false">Peta</button></div></div>
+<form id="filters" class="card pad grid g4" style="margin-bottom:1.2rem;align-items:end">
+  <div class="field" style="margin:0"><label for="q">Cari</label><input id="q" class="input" placeholder="Nama, deskripsi, lokasi"></div>
+  <div class="field" style="margin:0"><label for="cat">Kategori</label><select id="cat" class="input"><option value="">Semua</option></select></div>
+  <div class="field" style="margin:0"><label for="when">Batas konsumsi</label><select id="when" class="input"><option value="">Kapan saja</option><option value="6">Dalam 6 jam</option><option value="24">Dalam 24 jam</option><option value="72">Dalam 3 hari</option></select></div>
+  <div class="field" style="margin:0"><label for="sort">Urutkan</label><select id="sort" class="input"><option value="newest">Terbaru</option><option value="expires_soon">Segera kedaluwarsa</option><option value="distance" disabled>Terdekat (aktifkan lokasi)</option></select></div>
+  <div class="field" style="margin:0"><label for="radius">Radius</label><select id="radius" class="input" disabled><option value="">Semua jarak</option><option value="5">5 km</option><option value="10">10 km</option><option value="25">25 km</option><option value="50">50 km</option></select></div>
+  <div class="row"><button type="button" class="btn btn-secondary" id="near">Dekat saya</button><button class="btn btn-green" type="submit">Terapkan</button></div>
+</form>
+<div id="geo-msg" class="hint" role="status"></div>
+<div id="list" aria-live="polite"></div><div id="map" class="map hidden" role="region" aria-label="Peta makanan"></div><div id="pager"></div>
+</div>
+<script src="js/config.js"></script><script src="js/api.js"></script><script src="js/ui.js"></script><script src="js/shell.js"></script>
+<script>if(!window.__sbHalt)document.write('<script src="js/pages/explore.js"><\/script>')</script>
+</body>
+</html>

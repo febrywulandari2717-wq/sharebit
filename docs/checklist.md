@@ -1,22 +1,18 @@
-# Checklist persyaratan tugas
+# Checklist persyaratan
 
-| # | Persyaratan | Status | Bukti / catatan |
+| # | Persyaratan | Status | Bukti |
 |---|---|---|---|
-| 1 | Website dapat dipakai lewat browser | Dibuat; **belum diuji di browser** | `frontend/web` (10 halaman) |
-| 2 | Android React Native + Expo | Dibuat; bundle terkompilasi; **belum dijalankan di perangkat** | `frontend/mobile` |
-| 3 | Minimal 3 bahasa | ✅ | Python, JavaScript, PHP |
-| 4 | Tiga backend microservice terpisah | ✅ | Flask :5001, Express :5002, Laravel :5003 |
-| 5 | XAMPP sebagai MySQL | ✅ | koneksi `127.0.0.1:3306`, `setup-database.sql` |
-| 6 | Tiga database terpisah | ✅ | `sharebite_food`, `sharebite_request`, `sharebite_donation` |
-| 7 | REST API JSON | ✅ | `docs/api-contracts.md` |
-| 8 | Autentikasi & otorisasi | ✅ (Laravel belum dijalankan) | JWT RS256, peran donor/recipient/admin, hashing bcrypt |
-| 9 | Pengujian tiap service & integrasi | Food ✅ 31, Request ✅ 41, E2E ✅ 61 (dengan stub identity); **Laravel: tes ditulis, belum dijalankan** | `docs/testing.md` |
-| 10 | Dokumentasi | ✅ | `docs/`, README tiap service |
-| 11 | Siap Docker | ✅ (tanpa Dockerfile sesuai batas) | konfigurasi lewat environment variable |
-| 12 | Tidak ada FK lintas database | ✅ | |
-| 13 | Request Service tidak mengakses tabel Food Service | ✅ | hanya lewat REST |
-| 14 | Pencegahan stok negatif / permintaan ganda | ✅ | UPDATE atomik, unique key, Idempotency-Key |
-| 15 | Validasi perubahan status | ✅ | mesin status + riwayat |
-| 16 | Penanganan timeout/error API | ✅ | timeout 5 detik, kode 503/504, kompensasi, rekonsiliasi |
-| 17 | Secret lewat environment, ada `.env.example` | ✅ | |
-| 18 | Tidak membuat Docker/compose | ✅ | sesuai instruksi |
+| 1 | Website, Python+JS+PHP, 3 microservice, XAMPP, 3 database | ✅ | `docs/architecture.md` |
+| 2 | REST JSON, autentikasi, otorisasi peran & objek | ✅ | 49 tes Laravel, 47 Request, 39 Food |
+| 3 | Pencegahan overselling & permintaan ganda | ✅ | tes paralel + E2E |
+| 4 | Landing page, katalog (filter/urut/pagination/grid-list/peta), detail, reservasi | ✅ | smoke 44 + E2E |
+| 5 | Donasi: publikasi, edit, stok, permintaan, jadwal, serah terima | ✅ | E2E bagian 5–7 |
+| 6 | Dashboard analitik per peran dengan grafik berlabel | ✅ | smoke + tes timeline |
+| 7 | Favorit, notifikasi, riwayat | ✅ | E2E bagian 11–12 |
+| 8 | Poin, badge, peringkat, kampanye | ✅ | tes Laravel + E2E 13, 15 |
+| 9 | Peta & lokasi | ✅ (butuh internet untuk tile OSM; fallback daftar) | tes Food + smoke |
+| 10 | Profil, pusat bantuan, pelaporan | ✅ | E2E 14 |
+| 11 | Admin: pengguna, makanan, permintaan, laporan, kategori, kampanye, audit | ✅ | smoke admin + E2E 14 |
+| 12 | Area mitra/organisasi, chat, foto profil, testimoni | ❌ | lihat laporan §6 |
+| 13 | Docker / deployment cloud | — tidak dikerjakan sesuai instruksi | |
+| 14 | Uji di browser sungguhan | ⏳ belum | mohon dicoba manual |

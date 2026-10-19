@@ -3,33 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Profil · ShareBite</title>
+<meta name="description" content="ShareBite — platform berbagi makanan berlebih yang masih layak dikonsumsi.">
+<title>Profil & pengaturan · ShareBite</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="css/style.css" rel="stylesheet">
 </head>
-<body>
-<div id="nav"></div>
-<main class="container py-4">
-
-<div class="row g-4"><div class="col-lg-6"><div class="card-sb p-4"><h4>Profil</h4><div id="alert1"></div>
-<form id="pf" novalidate>
-  <div class="mb-3"><label class="form-label">Email</label><input id="email" class="form-control" disabled></div>
-  <div class="mb-3"><label class="form-label">Peran</label><input id="role" class="form-control" disabled></div>
-  <div class="mb-3"><label class="form-label">Nama</label><input name="name" class="form-control" required></div>
-  <div class="mb-3"><label class="form-label">No. telepon</label><input name="phone" class="form-control"></div>
-  <div class="mb-3"><label class="form-label">Alamat</label><input name="address" class="form-control"></div>
-  <button class="btn btn-terra" type="submit">Simpan perubahan</button></form></div></div>
-<div class="col-lg-6"><div class="card-sb p-4"><h4>Ganti password</h4>
-<form id="pw" novalidate>
-  <div class="mb-3"><label class="form-label">Password lama</label><input name="current_password" type="password" class="form-control" required></div>
-  <div class="mb-3"><label class="form-label">Password baru</label><input name="new_password" type="password" class="form-control" required minlength="8"><div class="form-text">Minimal 8 karakter, ada huruf dan angka.</div></div>
-  <button class="btn btn-green" type="submit">Ganti password</button></form></div></div></div>
-</main>
-<footer><div class="container d-flex justify-content-between flex-wrap"><span>ShareBite · berbagi makanan, kurangi pemborosan.</span><span>Tugas Cloud Computing</span></div></footer>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="js/config.js"></script><script src="js/api.js"></script><script src="js/ui.js"></script>
-<script src="js/profile.js"></script>
+<body data-layout="app" data-title="Profil & pengaturan" data-roles="donor,recipient,admin">
+<div id="view">
+<div id="page"></div>
+</div>
+<script src="js/config.js"></script><script src="js/api.js"></script><script src="js/ui.js"></script><script src="js/shell.js"></script>
+<script>if(!window.__sbHalt)document.write('<script src="js/pages/profile.js"><\/script>')</script>
 </body>
 </html>

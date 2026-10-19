@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('users')) {
+            return; // database lama yang sudah memiliki tabel ini
+        }
+
         Schema::create('users', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name', 100);

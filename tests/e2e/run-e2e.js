@@ -3,7 +3,7 @@
 // Butuh Node.js 18+. Membuat data uji baru (email unik) setiap dijalankan.
 const FOOD = process.env.FOOD_URL || 'http://127.0.0.1:5001';
 const REQ = process.env.REQUEST_URL || 'http://127.0.0.1:5002';
-const DON = process.env.DONATION_URL || 'http://127.0.0.1:5003';
+const DON = process.env.DONATION_URL || 'http://127.0.0.1:8003';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@sharebite.local';
 const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'Admin12345';
 
@@ -203,6 +203,96 @@ const stockOf = async (token, id) => (await call('GET', `${FOOD}/api/v1/foods/${
     (await call('POST', `${DON}/api/v1/auth/login`, { body: { email: rec2.email, password: rec2.password } })).status === 403);
   check('token pengguna nonaktif ditolak',
     (await call('GET', `${DON}/api/v1/auth/me`, { token: rec2.token })).status === 401);
+
+
+  section('10. Endpoint publik, lokasi, dan kategori admin');
+  const pubFoods = await call('GET', `${FOOD}/api/v1/public/foods?q=E2E`);
+  check('katalog publik tanpa login', pubFoods.status === 200 && pubFoods.body.meta.total >= 1, pubFoods.body);
+  const geoFood = (await call('POST', `${FOOD}/api/v1/foods`, { token: donor.token, body: foodBody({ title: 'Lokasi Gresik E2E', latitude: -7.155, longitude: 112.656 }) })).data;
+  const near = await call('GET', `${FOOD}/api/v1/public/foods?lat=-7.16&lng=112.65&radius_km=10&sort=distance`);
+  check('filter radius mengembalikan makanan berkoordinat + jarak', near.status === 200 && near.data.some((f) => f.id === geoFood.id && f.distance_km < 10), near.body);
+  const ps = await call('GET', `${FOOD}/api/v1/public/stats`);
+  check('statistik makanan publik', ps.status === 200 && ps.data.available_foods >= 1, ps.body);
+  const pd = await call('GET', `${DON}/api/v1/public/stats`);
+  check('statistik dampak publik hanya dari donasi selesai', pd.status === 200 && pd.data.completed_donations >= 1 && pd.data.portions_delivered >= 2, pd.body);
+  const catName = `Kategori E2E ${Date.now()}`;
+  check('donor tidak boleh membuat kategori', (await call('POST', `${FOOD}/api/v1/categories`, { token: donor.token, body: { name: catName } })).status === 403);
+  const cat = await call('POST', `${FOOD}/api/v1/categories`, { token: adminToken, body: { name: catName } });
+  check('admin membuat kategori', cat.status === 201, cat.body);
+  check('admin menghapus kategori', (await call('DELETE', `${FOOD}/api/v1/categories/${cat.data.id}`, { token: adminToken })).status === 204);
+
+  section('11. Favorit');
+  const fav1 = await call('POST', `${DON}/api/v1/favorites`, { token: rec.token, body: { food_id: food.id, food_title: food.title } });
+  const fav2 = await call('POST', `${DON}/api/v1/favorites`, { token: rec.token, body: { food_id: food.id } });
+  check('tambah favorit (idempoten, tanpa duplikat)', fav1.status === 201 && fav2.status === 200);
+  const favs = await call('GET', `${DON}/api/v1/favorites`, { token: rec.token });
+  check('daftar favorit sinkron database', favs.status === 200 && favs.body.meta.total === 1);
+  check('favorit bersifat pribadi', (await call('GET', `${DON}/api/v1/favorites`, { token: donor.token })).body.meta.total === 0);
+  check('hapus favorit', (await call('DELETE', `${DON}/api/v1/favorites/${food.id}`, { token: rec.token })).status === 204);
+
+  section('12. Notifikasi, riwayat aktivitas, dan statistik');
+  const rN = await call('GET', `${DON}/api/v1/notifications?per_page=50`, { token: rec.token });
+  const types = rN.data.map((n) => n.type);
+  check('penerima menerima notifikasi persetujuan & jadwal & selesai', ['request_approved', 'donation_scheduled', 'donation_completed'].every((t) => types.includes(t)), types);
+  const dN = await call('GET', `${DON}/api/v1/notifications?per_page=50`, { token: donor.token });
+  const dt = dN.data.map((n) => n.type);
+  check('donatur menerima notifikasi permintaan baru & donasi selesai', ['request_new', 'donation_completed'].every((t) => dt.includes(t)), dt);
+  const unread = await call('GET', `${DON}/api/v1/notifications/unread-count`, { token: rec.token });
+  check('jumlah belum dibaca > 0', unread.data.unread > 0);
+  const readAll = await call('POST', `${DON}/api/v1/notifications/read-all`, { token: rec.token });
+  check('tandai semua dibaca', readAll.status === 200 && (await call('GET', `${DON}/api/v1/notifications/unread-count`, { token: rec.token })).data.unread === 0);
+  const act = await call('GET', `${REQ}/api/v1/activity?per_page=50`, { token: rec.token });
+  check('riwayat aktivitas penerima (dibatasi miliknya)', act.status === 200 && act.body.meta.total >= 4 && act.data.every((a) => a.actor_id === undefined), act.body);
+  check('filter riwayat berdasarkan status', (await call('GET', `${REQ}/api/v1/activity?status=completed`, { token: rec.token })).body.meta.total >= 1);
+  check('riwayat butuh login', (await call('GET', `${REQ}/api/v1/activity`)).status === 401);
+  const tl = await call('GET', `${DON}/api/v1/stats/timeline?days=7`, { token: donor.token });
+  check('deret waktu donasi 7 hari', tl.status === 200 && tl.data.series.length === 7 && tl.data.series.reduce((a, x) => a + x.portions, 0) >= 2, tl.body);
+  const rst = await call('GET', `${REQ}/api/v1/requests/stats`, { token: adminToken });
+  check('tingkat penyelesaian terdefinisi', rst.status === 200 && rst.data.completion_rate !== undefined, rst.body);
+
+  section('13. Gamifikasi: poin, badge, peringkat');
+  const gm = await call('GET', `${DON}/api/v1/me/gamification`, { token: donor.token });
+  check('poin donatur dari donasi selesai (10 + 2 porsi = 12, tidak ganda)', gm.status === 200 && gm.data.points === 12 && gm.data.completed_donations === 1, gm.body);
+  check('badge Donatur Pertama diperoleh', gm.data.badges.find((b) => b.code === 'first_donor').earned === true);
+  const recGm = await call('GET', `${DON}/api/v1/me/gamification`, { token: rec.token });
+  check('penerima tidak mendapat poin', recGm.data.points === 0);
+  const lb = await call('GET', `${DON}/api/v1/public/leaderboard?period=all`);
+  check('papan peringkat publik memuat donatur', lb.status === 200 && lb.data.entries.some((e) => e.user_id === donor.id && e.points === 12), lb.body);
+  const hide = await call('PATCH', `${DON}/api/v1/auth/me`, { token: donor.token, body: { leaderboard_visible: false } });
+  const lb2 = await call('GET', `${DON}/api/v1/public/leaderboard?period=all`);
+  check('donatur dapat menyembunyikan diri dari peringkat', hide.status === 200 && !lb2.data.entries.some((e) => e.user_id === donor.id));
+  await call('PATCH', `${DON}/api/v1/auth/me`, { token: donor.token, body: { leaderboard_visible: true } });
+
+  section('14. Laporan, moderasi, dan log audit');
+  const rep = await call('POST', `${DON}/api/v1/reports`, { token: rec.token, body: { target_type: 'food', target_id: food.id, reason: 'misleading', details: 'Uji E2E' } });
+  check('penerima melaporkan makanan', rep.status === 201, rep.body);
+  check('laporan ganda yang masih diproses ditolak', (await call('POST', `${DON}/api/v1/reports`, { token: rec.token, body: { target_type: 'food', target_id: food.id, reason: 'misleading' } })).status === 409);
+  check('non-admin tidak boleh melihat laporan', (await call('GET', `${DON}/api/v1/reports`, { token: rec.token })).status === 403);
+  check('menutup laporan tanpa catatan ditolak', (await call('PATCH', `${DON}/api/v1/reports/${rep.data.id}`, { token: adminToken, body: { status: 'resolved' } })).status === 422);
+  const fixed = await call('PATCH', `${DON}/api/v1/reports/${rep.data.id}`, { token: adminToken, body: { status: 'resolved', admin_note: 'Sudah diperiksa, informasi diperbaiki' } });
+  check('admin menyelesaikan laporan', fixed.status === 200 && fixed.data.status === 'resolved', fixed.body);
+  const mineRep = await call('GET', `${DON}/api/v1/reports/mine`, { token: rec.token });
+  check('pelapor melihat catatan admin', mineRep.data[0].admin_note.includes('diperiksa'));
+  check('pelapor mendapat notifikasi hasil laporan', (await call('GET', `${DON}/api/v1/notifications?per_page=50`, { token: rec.token })).data.some((n) => n.type === 'report'));
+  const closeFood = await call('PATCH', `${FOOD}/api/v1/foods/${geoFood.id}`, { token: adminToken, body: { status: 'closed' } });
+  check('admin menutup makanan (moderasi)', closeFood.status === 200 && closeFood.data.status === 'closed', closeFood.body);
+  let logs = [];
+  for (let i = 0; i < 10 && !logs.some((l) => l.action === 'food.update'); i += 1) { await new Promise((r) => setTimeout(r, 300)); logs = (await call('GET', `${DON}/api/v1/audit-logs?per_page=100`, { token: adminToken })).data; }
+  const acts = logs.map((l) => l.action);
+  check('log audit mencatat laporan, pengguna, dan aksi Food Service', ['report.resolved', 'user.deactivate', 'food.update', 'category.create'].every((a) => acts.includes(a)), acts);
+  check('log audit tidak memuat rahasia', !JSON.stringify(logs).match(/password|refresh_token|access_token|eyJ/i));
+  check('log audit hanya untuk admin', (await call('GET', `${DON}/api/v1/audit-logs`, { token: donor.token })).status === 403);
+
+  section('15. Kampanye komunitas');
+  const camp = await call('POST', `${DON}/api/v1/campaigns`, { token: adminToken, body: { title: 'Kampanye E2E', description: 'Uji', target_portions: 10, starts_at: hoursFromNow(-24), ends_at: hoursFromNow(24 * 7) } });
+  check('admin membuat kampanye', camp.status === 201, camp.body);
+  check('donor tidak boleh membuat kampanye', (await call('POST', `${DON}/api/v1/campaigns`, { token: donor.token, body: {} })).status === 403);
+  const pubCamps = await call('GET', `${DON}/api/v1/public/campaigns`);
+  check('kampanye tampil publik dengan kemajuan 0', pubCamps.data.some((c) => c.id === camp.data.id && c.progress.portions === 0));
+  const joined = await call('POST', `${DON}/api/v1/campaigns/${camp.data.id}/join`, { token: donor.token });
+  check('donatur bergabung kampanye', joined.status === 200 && joined.data.joined === true, joined.body);
+  const prog = await call('GET', `${DON}/api/v1/campaigns/${camp.data.id}`, { token: donor.token });
+  check('kemajuan kampanye dihitung dari donasi selesai peserta (2 porsi)', prog.data.progress.portions === 2 && prog.data.progress.participants === 1, prog.body);
 
   console.log(`\n==== Hasil: ${passed} lulus, ${failures.length} gagal ====`);
   if (failures.length) { console.log('Gagal:\n - ' + failures.join('\n - ')); process.exit(1); }

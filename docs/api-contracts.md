@@ -10,7 +10,7 @@ Kode error umum: `VALIDATION_ERROR` 422, `UNAUTHENTICATED` 401, `FORBIDDEN` 403,
 
 Peran: **D** donor, **R** recipient (penerima), **A** admin.
 
-## Donation + Identity Service — `http://localhost:5003/api`
+## Donation + Identity Service — `http://localhost:8003/api`
 | Metode & path | Akses | Keterangan |
 |---|---|---|
 | GET `/health` | publik | status service & database |
@@ -62,3 +62,48 @@ Internal (header `X-Service-Key`, hanya untuk Request Service): `POST /internal/
 Kode khusus: `DUPLICATE_ACTIVE_REQUEST` 409, `INSUFFICIENT_STOCK` 409, `FOOD_NOT_AVAILABLE` 409, `IDEMPOTENCY_CONFLICT` 409, `REQUEST_IN_PROGRESS` 409, `INVALID_STATE_TRANSITION` 409.
 
 Internal (header `X-Service-Key` milik Donation Service): `GET /internal/v1/requests/{id}`, `POST /internal/v1/requests/{id}/status` `{status: scheduled|completed|cancelled, reason?}` (idempoten).
+
+---
+# Tambahan v1.1 (pengembangan website)
+
+## Food Service (5001) — baru
+| Metode & path | Akses | Keterangan |
+|---|---|---|
+| GET `/api/v1/public/foods` | publik | katalog tanpa login (hanya yang tersedia); filter sama dengan `/foods` |
+| GET `/api/v1/public/foods/{id}` | publik | detail makanan |
+| GET `/api/v1/public/categories` | publik | |
+| GET `/api/v1/public/stats` | publik | `available_foods, available_portions, total_foods, reserved_portions, popular_categories[]` |
+| GET `/api/v1/foods` + filter baru | login | `lat, lng, radius_km, sort=distance` (menambah `distance_km`), `expires_before`, `pickup_before` (ISO UTC), `has_coords=true` |
+| POST/PATCH `/api/v1/foods` | D, A | field baru opsional `latitude`, `longitude` (diisi bersamaan, -90..90 / -180..180) |
+| POST `/api/v1/categories` · PATCH/DELETE `/api/v1/categories/{id}` | A | 409 jika nama kembar / kategori dipakai makanan aktif |
+Tindakan admin pada makanan orang lain dan kategori otomatis dikirim ke log audit (best effort).
+
+## Request Service (5002) — baru
+| Metode & path | Akses | Keterangan |
+|---|---|---|
+| GET `/api/v1/activity` | login | riwayat perubahan status; dibatasi milik sendiri (admin: semua). `?from=YYYY-MM-DD&to=&status=&page=` |
+| GET `/api/v1/requests/stats/timeline?days=14` | login | permintaan baru per hari (UTC), dibatasi peran |
+| GET `/api/v1/requests/stats` | A | kini memuat `completion_rate` = selesai ÷ (selesai+ditolak+dibatalkan+kedaluwarsa), dalam persen |
+Request Service mengirim notifikasi (permintaan baru, disetujui, ditolak, dibatalkan, kedaluwarsa) dan audit aksi admin ke Donation Service.
+
+## Donation Service (8003) — baru
+| Metode & path | Akses | Keterangan |
+|---|---|---|
+| GET `/v1/public/stats` | publik | donasi selesai, porsi tersalurkan, donatur aktif, penerima terlayani, anggota |
+| GET `/v1/public/campaigns` | publik | kampanye aktif/berakhir + kemajuan |
+| GET `/v1/public/leaderboard?period=month\|all` | publik | hanya pengguna yang mengizinkan |
+| GET/POST `/v1/favorites` · GET `/v1/favorites/ids` · DELETE `/v1/favorites/{food_id}` | login | unik per (user, makanan) |
+| GET `/v1/notifications?unread=1` · GET `/v1/notifications/unread-count` · POST `/v1/notifications/{id}/read` · POST `/v1/notifications/read-all` | login | milik sendiri |
+| POST `/v1/reports` · GET `/v1/reports/mine` | login | `target_type food\|user`, `target_id`, `reason spoiled\|misleading\|fraud\|inappropriate\|other`, `details?` |
+| GET `/v1/reports` · PATCH `/v1/reports/{id}` | A | PATCH `status reviewing\|resolved\|dismissed` + `admin_note` (wajib saat menutup) |
+| GET `/v1/audit-logs?action=&actor_id=` | A | |
+| GET `/v1/campaigns` · GET `/v1/campaigns/{id}` · POST/DELETE `/v1/campaigns/{id}/join` | login | |
+| POST `/v1/campaigns` · PATCH `/v1/campaigns/{id}` | A | |
+| GET `/v1/me/gamification` | login | poin, peringkat, badge beserta progres, aturan |
+| GET `/v1/stats/timeline?days=14` | login | donasi per hari, dibatasi peran (admin juga memuat `registrations`) |
+| PATCH `/v1/auth/me` | login | field baru `notify_enabled`, `leaderboard_visible` |
+| POST `/v1/internal/notifications` · POST `/v1/internal/audit` | `X-Service-Key` | dipanggil Request/Food Service |
+
+**Aturan poin:** donatur mendapat 10 poin per donasi *selesai* + 1 poin per porsi; sekali per donasi (unique key `(user, donation, type)`). Penerima tidak mendapat poin.
+**Badge** (dihitung backend): Donatur Pertama (1 donasi selesai), Berbagi 10 Porsi, Donasi Selesai 10 Kali, Kontributor Aktif (3 selesai/30 hari), Mitra Komunitas (ikut kampanye + ≥1 selesai).
+**Kemajuan kampanye:** porsi dari donasi selesai milik peserta, `completed_at` di dalam periode kampanye.

@@ -6,6 +6,7 @@ const history = require('../repositories/historyRepository');
 const food = require('./foodServiceClient');
 const { AppError, notFound, validation } = require('../utils/errors');
 const { isUuid } = require('../utils/uuid');
+const notifier = require('./notifier');
 
 const iso = (d) => (d ? new Date(d).toISOString() : null);
 
@@ -156,7 +157,9 @@ async function createRequest({ user, body, idempotencyKey }) {
     await pool.query("UPDATE requests SET status = 'failed', active_slot = NULL WHERE id = ? AND status = 'reserving'", [id]);
     throw err;
   }
-  return { request: serialize(await repo.findById(pool, id)), created: true };
+  const created = await repo.findById(pool, id);
+  notifier.notify(created.donor_id, 'request_new', 'Permintaan baru', `${quantity} porsi untuk "${created.food_title}".`, 'donor-requests.html');
+  return { request: serialize(created), created: true };
 }
 
 // ---------------------------------------------------------------- baca
@@ -202,7 +205,62 @@ async function getRequest({ user, id }) {
 
 async function stats() {
   const byStatus = await repo.countByStatus(pool);
-  return { total: Object.values(byStatus).reduce((a, b) => a + b, 0), by_status: byStatus };
+  const closed = ['completed', 'rejected', 'cancelled', 'expired'].reduce((a, k) => a + (byStatus[k] || 0), 0);
+  return {
+    total: Object.values(byStatus).reduce((a, b) => a + b, 0),
+    by_status: byStatus,
+    // Definisi: permintaan selesai / seluruh permintaan yang sudah berakhir (selesai, ditolak, dibatalkan, kedaluwarsa)
+    completion_rate: closed ? Math.round(((byStatus.completed || 0) * 1000) / closed) / 10 : null,
+  };
+}
+
+function scopeOf(user) {
+  return {
+    recipientId: user.role === 'recipient' ? user.id : null,
+    donorId: user.role === 'donor' ? user.id : null,
+  };
+}
+
+async function timeline({ user, query }) {
+  const days = Math.min(Math.max(parseInt(query.days, 10) || 14, 1), 90);
+  const rows = await repo.dailyCreated(pool, { ...scopeOf(user), days });
+  const map = Object.fromEntries(rows.map((r) => [r.d, Number(r.n)]));
+  const series = [];
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+  for (let i = 0; i < days; i += 1) {
+    const d = new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10);
+    series.push({ date: d, requests: map[d] || 0 });
+  }
+  return { days, unit: 'permintaan baru per hari (UTC)', series };
+}
+
+async function activity({ user, query }) {
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const perPage = Math.min(Math.max(parseInt(query.per_page, 10) || 15, 1), 50);
+  const errors = {};
+  const parseDate = (v, key) => {
+    if (!v) return null;
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) errors[key] = ['Format tanggal tidak valid (YYYY-MM-DD).'];
+    return d;
+  };
+  const from = parseDate(query.from, 'from');
+  let to = parseDate(query.to, 'to');
+  if (to && /^\d{4}-\d{2}-\d{2}$/.test(String(query.to))) to = new Date(to.getTime() + 86400000 - 1); // sampai akhir hari
+  if (query.status && !repo.ALL_STATUSES.includes(query.status)) errors.status = ['Status tidak valid.'];
+  if (Object.keys(errors).length) throw validation(errors);
+  const { rows, total } = await repo.listActivity(pool, { ...scopeOf(user), from, to, status: query.status || null, page, perPage });
+  return {
+    data: rows.map((r) => ({
+      request_id: r.request_id, food_title: r.food_title, quantity: r.quantity, from_status: r.from_status, to_status: r.to_status,
+      actor_role: r.actor_role, reason: r.reason, at: iso(r.at),
+      // penerima tidak perlu tahu id aktor lain; admin boleh
+      actor_id: user.role === 'admin' ? (r.actor_id === null ? null : Number(r.actor_id)) : undefined,
+    })),
+    meta: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) },
+  };
 }
 
 // ---------------------------------------------------------------- aksi
@@ -215,6 +273,8 @@ async function approve({ user, id }) {
   } catch (err) {
     console.warn(`[request-service] Konfirmasi reservasi ${row.id} gagal: ${err.message}`);
   }
+  notifier.notify(row.recipient_id, 'request_approved', 'Permintaan disetujui', `"${row.food_title}" disetujui. Tunggu jadwal pengambilan dari donor.`, 'my-requests.html');
+  if (user.role === 'admin') notifier.audit(user, 'request.approve', 'request', row.id, { food: row.food_title });
   return getRequest({ user, id });
 }
 
@@ -225,6 +285,8 @@ async function reject({ user, id, reason }) {
   if (!isDonor && user.role !== 'admin') throw new AppError('FORBIDDEN', 'Hanya donor pemilik makanan yang boleh menolak.', 403);
   await transition({ id: row.id, from: ['pending'], to: 'rejected', actor: user, reason: text, setRejectionReason: true });
   await releaseStock(row.id);
+  notifier.notify(row.recipient_id, 'request_rejected', 'Permintaan ditolak', `"${row.food_title}": ${text}`, 'my-requests.html');
+  if (user.role === 'admin') notifier.audit(user, 'request.reject', 'request', row.id, { reason: text });
   return getRequest({ user, id });
 }
 
@@ -241,6 +303,9 @@ async function cancel({ user, id, reason }) {
   const text = reason ? String(reason).trim().slice(0, 255) || null : null;
   await transition({ id: row.id, from, to: 'cancelled', actor: user, reason: text });
   await releaseStock(row.id);
+  if (isRecipient) notifier.notify(row.donor_id, 'request_cancelled', 'Permintaan dibatalkan penerima', `"${row.food_title}" dibatalkan.${text ? ' Alasan: ' + text : ''}`, 'donor-requests.html');
+  else notifier.notify(row.recipient_id, 'request_cancelled', 'Permintaan dibatalkan', `"${row.food_title}" dibatalkan.${text ? ' Alasan: ' + text : ''}`, 'my-requests.html');
+  if (user.role === 'admin') notifier.audit(user, 'request.cancel', 'request', row.id, { reason: text });
   return getRequest({ user, id });
 }
 
@@ -279,6 +344,6 @@ async function internalSetStatus({ id, status, reason }) {
 }
 
 module.exports = {
-  createRequest, listRequests, getRequest, stats, approve, reject, cancel,
+  createRequest, listRequests, getRequest, stats, timeline, activity, approve, reject, cancel,
   internalGet, internalSetStatus, releaseStock, transition, serialize,
 };

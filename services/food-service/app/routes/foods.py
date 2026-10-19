@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, g, jsonify, request
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, literal
 
 from ..extensions import db
 from ..middleware.auth import require_auth
 from ..models import Category, Food, Reservation
+from ..utils.audit import audit
 from ..utils.errors import AppError
 from ..utils.image_upload import save_food_image
 from ..utils.pagination import build_meta, get_pagination_args
@@ -86,6 +87,23 @@ def validate_food(data, food=None):
             if v is not None and len(str(v)) > 255:
                 errors[k] = ["Maksimal 255 karakter."]
             out[k] = v or None
+    for k in ("latitude", "longitude"):
+        if k in data:
+            v = data.get(k)
+            if v in (None, ""):
+                out[k] = None
+                continue
+            try:
+                f = float(v)
+            except (TypeError, ValueError):
+                errors[k] = ["Harus berupa angka."]
+                continue
+            lim = 90 if k == "latitude" else 180
+            if not -lim <= f <= lim:
+                errors[k] = [f"Harus antara -{lim} dan {lim}."]
+            out[k] = f
+    if ("latitude" in out) != ("longitude" in out) and not partial:
+        errors.setdefault("latitude", ["Isi latitude dan longitude bersamaan."])
     for k in ("pickup_start", "pickup_end", "expires_at"):
         if has(k):
             out[k] = parse_dt(data.get(k), k, errors)
@@ -128,25 +146,29 @@ def reserved_quantity(food_id):
     return int(total or 0)
 
 
-@foods_bp.get("/foods")
-@require_auth()
-def list_foods():
-    q = (request.args.get("q") or "").strip()
-    category_id = request.args.get("category_id")
-    status = request.args.get("status")
-    mine = request.args.get("mine", "false").lower() == "true"
-    show_all = request.args.get("all", "false").lower() == "true"
-    sort = request.args.get("sort", "newest")
+def haversine_km(lat, lng):
+    """Ekspresi SQL jarak (km) dari titik (lat, lng) ke koordinat makanan."""
+    la, ln = literal(lat), literal(lng)
+    cosine = (
+        func.cos(func.radians(la)) * func.cos(func.radians(Food.latitude))
+        * func.cos(func.radians(Food.longitude) - func.radians(ln))
+        + func.sin(func.radians(la)) * func.sin(func.radians(Food.latitude))
+    )
+    return 6371.0 * func.acos(func.least(1.0, func.greatest(-1.0, cosine)))
+
+
+def query_foods(args, scope):
+    """Membangun daftar makanan. scope: 'public' | 'mine' | 'all' | 'catalog'."""
+    q = (args.get("q") or "").strip()
+    category_id = args.get("category_id")
+    status = args.get("status")
+    sort = args.get("sort", "newest")
     page, per_page = get_pagination_args(request)
 
     query = db.session.query(Food).filter(Food.is_deleted.is_(False))
-    if mine:
-        if g.role not in ("donor", "admin"):
-            raise AppError("FORBIDDEN", "Hanya donor yang punya daftar makanan sendiri.", 403)
+    if scope == "mine":
         query = query.filter(Food.donor_id == g.user_id)
-    elif show_all and g.role == "admin":
-        pass
-    else:
+    elif scope != "all":
         query = query.filter(Food.status == "available", Food.expires_at > utcnow(), Food.quantity_available > 0)
 
     if q:
@@ -162,10 +184,66 @@ def list_foods():
             raise AppError("VALIDATION_ERROR", "status tidak valid.", 422)
         query = query.filter(Food.status == status)
 
-    query = query.order_by(Food.expires_at.asc() if sort == "expires_soon" else Food.created_at.desc(), Food.id.desc())
+    errors = {}
+    for key, field in (("expires_before", Food.expires_at), ("pickup_before", Food.pickup_end)):
+        if args.get(key):
+            dt = parse_dt(args.get(key), key, errors)
+            if dt:
+                query = query.filter(field <= dt)
+    if errors:
+        raise AppError("VALIDATION_ERROR", "Filter tidak valid.", 422, errors)
+
+    distance = None
+    if args.get("lat") and args.get("lng"):
+        try:
+            lat, lng = float(args["lat"]), float(args["lng"])
+        except ValueError:
+            raise AppError("VALIDATION_ERROR", "lat/lng harus angka.", 422)
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            raise AppError("VALIDATION_ERROR", "lat/lng di luar rentang.", 422)
+        distance = haversine_km(lat, lng)
+        query = query.filter(Food.latitude.isnot(None), Food.longitude.isnot(None))
+        if args.get("radius_km"):
+            try:
+                query = query.filter(distance <= float(args["radius_km"]))
+            except ValueError:
+                raise AppError("VALIDATION_ERROR", "radius_km harus angka.", 422)
+    if args.get("has_coords", "").lower() == "true":
+        query = query.filter(Food.latitude.isnot(None), Food.longitude.isnot(None))
+
+    if sort == "distance" and distance is not None:
+        order = [distance.asc(), Food.id.desc()]
+    elif sort == "expires_soon":
+        order = [Food.expires_at.asc(), Food.id.desc()]
+    else:
+        order = [Food.created_at.desc(), Food.id.desc()]
     total = query.count()
-    items = query.offset((page - 1) * per_page).limit(per_page).all()
-    return jsonify({"data": [f.to_dict() for f in items], "meta": build_meta(page, per_page, total)})
+    if distance is not None:
+        rows = query.add_columns(distance.label("d")).order_by(*order).offset((page - 1) * per_page).limit(per_page).all()
+        items = []
+        for food, d in rows:
+            item = food.to_dict()
+            item["distance_km"] = round(float(d), 2) if d is not None else None
+            items.append(item)
+    else:
+        items = [f.to_dict() for f in query.order_by(*order).offset((page - 1) * per_page).limit(per_page).all()]
+    return {"data": items, "meta": build_meta(page, per_page, total)}
+
+
+@foods_bp.get("/foods")
+@require_auth()
+def list_foods():
+    mine = request.args.get("mine", "false").lower() == "true"
+    show_all = request.args.get("all", "false").lower() == "true"
+    if mine:
+        if g.role not in ("donor", "admin"):
+            raise AppError("FORBIDDEN", "Hanya donor yang punya daftar makanan sendiri.", 403)
+        scope = "mine"
+    elif show_all and g.role == "admin":
+        scope = "all"
+    else:
+        scope = "catalog"
+    return jsonify(query_foods(request.args, scope))
 
 
 @foods_bp.get("/foods/stats")
@@ -216,6 +294,8 @@ def create_food():
         expires_at=v["expires_at"],
         allergens=v.get("allergens"),
         storage_info=v.get("storage_info"),
+        latitude=v.get("latitude"),
+        longitude=v.get("longitude"),
         status="available",
     )
     db.session.add(food)
@@ -247,6 +327,8 @@ def update_food(food_id):
         food.status = data["status"]
     food.refresh_status()
     db.session.commit()
+    if food.donor_id != g.user_id:
+        audit("food.update", "food", food.id, fields=sorted(data.keys()), status=food.status)
     return jsonify({"data": food.to_dict()})
 
 
@@ -261,6 +343,8 @@ def delete_food(food_id):
         raise AppError("CONFLICT", "Masih ada permintaan yang menunggu keputusan untuk makanan ini.", 409)
     food.is_deleted = True
     db.session.commit()
+    if food.donor_id != g.user_id:
+        audit("food.delete", "food", food.id, title=food.title)
     return "", 204
 
 

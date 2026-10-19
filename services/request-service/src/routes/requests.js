@@ -19,6 +19,14 @@ router.get('/requests', requireAuth(), wrap(async (req, res) => {
   res.json(await service.listRequests({ user: req.user, query: req.query }));
 }));
 
+router.get('/activity', requireAuth(), wrap(async (req, res) => {
+  res.json(await service.activity({ user: req.user, query: req.query }));
+}));
+
+router.get('/requests/stats/timeline', requireAuth(), wrap(async (req, res) => {
+  res.json({ data: await service.timeline({ user: req.user, query: req.query }) });
+}));
+
 router.get('/requests/stats', requireAuth('admin'), wrap(async (req, res) => {
   res.json({ data: await service.stats() });
 }));

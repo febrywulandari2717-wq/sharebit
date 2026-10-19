@@ -1,6 +1,7 @@
 const request = require('supertest');
 
 jest.mock('../src/services/foodServiceClient');
+jest.mock('../src/services/notifier');
 
 const { bearer, uuid, makeFakeFood } = require('./helpers');
 const { createApp } = require('../src/app');
@@ -10,6 +11,7 @@ const { migrate } = require('../src/db/schema');
 const foodClient = require('../src/services/foodServiceClient');
 const { AppError } = require('../src/utils/errors');
 const reconcile = require('../src/services/reconcileService');
+const notifier = require('../src/services/notifier');
 
 const app = createApp();
 const SK = { 'X-Service-Key': 'test-donation-key' };
@@ -27,6 +29,8 @@ beforeAll(async () => {
 beforeEach(async () => {
   await pool.query('DELETE FROM request_history');
   await pool.query('DELETE FROM requests');
+  notifier.notify.mockClear();
+  notifier.audit.mockClear();
   fake = makeFakeFood(10, 10);
   Object.assign(foodClient, fake.impl);
 });
@@ -302,5 +306,69 @@ describe('reconcile', () => {
     expect((await create(recipient(), { food_id: 1, quantity: 1 })).status).toBe(409);
     expect((await reconcile.run()).failed).toBe(1);
     expect((await create(recipient(), { food_id: 1, quantity: 1 })).status).toBe(201);
+  });
+});
+
+describe('notifikasi, riwayat aktivitas, dan statistik', () => {
+  const act = (who, id, action, body = {}) => request(app).post(`/api/v1/requests/${id}/${action}`).set(who).send(body);
+
+  test('notifikasi dikirim ke pihak yang tepat', async () => {
+    const id = (await create(recipient(), { food_id: 1, quantity: 2 })).body.data.id;
+    expect(notifier.notify).toHaveBeenLastCalledWith(10, 'request_new', 'Permintaan baru', expect.stringContaining('2 porsi'), 'donor-requests.html');
+    await act(donor(), id, 'approve');
+    expect(notifier.notify).toHaveBeenLastCalledWith(20, 'request_approved', expect.any(String), expect.any(String), 'my-requests.html');
+    await act(recipient(), id, 'cancel', { reason: 'tidak jadi' });
+    expect(notifier.notify).toHaveBeenLastCalledWith(10, 'request_cancelled', expect.any(String), expect.stringContaining('tidak jadi'), 'donor-requests.html');
+  });
+  test('penolakan memberi tahu penerima beserta alasan', async () => {
+    const id = (await create(recipient(), { food_id: 1, quantity: 1 })).body.data.id;
+    await act(donor(), id, 'reject', { reason: 'Sudah habis' });
+    expect(notifier.notify).toHaveBeenLastCalledWith(20, 'request_rejected', expect.any(String), expect.stringContaining('Sudah habis'), 'my-requests.html');
+  });
+  test('aksi admin dicatat ke audit log', async () => {
+    const id = (await create(recipient(), { food_id: 1, quantity: 1 })).body.data.id;
+    await act(admin(), id, 'approve');
+    expect(notifier.audit).toHaveBeenCalledWith(expect.objectContaining({ role: 'admin' }), 'request.approve', 'request', id, expect.any(Object));
+  });
+  test('kegagalan notifikasi tidak menggagalkan permintaan', async () => {
+    notifier.notify.mockImplementation(() => { throw new Error('mati'); });
+    const r = await create(recipient(), { food_id: 1, quantity: 1 });
+    notifier.notify.mockReset();
+    expect(r.status).toBeGreaterThanOrEqual(200);
+  });
+  test('riwayat aktivitas: dibatasi per peran, filter status & tanggal, pagination', async () => {
+    const a = (await create(recipient(), { food_id: 1, quantity: 1 })).body.data.id;
+    await create(recipient2(), { food_id: 1, quantity: 1 });
+    await act(donor(), a, 'approve');
+    const mine = await request(app).get('/api/v1/activity').set(recipient());
+    expect(mine.body.meta.total).toBe(2); // pending + approved milik penerima 1
+    expect(mine.body.data[0].to_status).toBe('approved');
+    expect(mine.body.data[0].actor_id).toBeUndefined();
+    expect((await request(app).get('/api/v1/activity').set(donor2())).body.meta.total).toBe(0);
+    expect((await request(app).get('/api/v1/activity').set(admin())).body.meta.total).toBe(3);
+    expect((await request(app).get('/api/v1/activity?status=approved').set(donor())).body.meta.total).toBe(1);
+    expect((await request(app).get('/api/v1/activity?from=2099-01-01').set(donor())).body.meta.total).toBe(0);
+    expect((await request(app).get('/api/v1/activity?from=2000-01-01&to=2099-12-31&per_page=1').set(donor())).body.data).toHaveLength(1);
+    expect((await request(app).get('/api/v1/activity?from=ngawur').set(donor())).status).toBe(422);
+    expect((await request(app).get('/api/v1/activity')).status).toBe(401);
+  });
+  test('statistik: tingkat penyelesaian terdefinisi dan tren harian', async () => {
+    const ids = [];
+    for (const u of [recipient(), recipient2()]) ids.push((await create(u, { food_id: 1, quantity: 1 })).body.data.id);
+    await act(donor(), ids[0], 'reject', { reason: 'penuh sekali' });
+    await request(app).post(`/internal/v1/requests/${ids[1]}/status`).set(SK).send({ status: 'scheduled' }); // 409, belum approved
+    let s = (await request(app).get('/api/v1/requests/stats').set(admin())).body.data;
+    expect(s.by_status.rejected).toBe(1);
+    expect(s.completion_rate).toBe(0); // 0 selesai dari 1 yang berakhir
+    await act(donor(), ids[1], 'approve');
+    await request(app).post(`/internal/v1/requests/${ids[1]}/status`).set(SK).send({ status: 'scheduled' });
+    await request(app).post(`/internal/v1/requests/${ids[1]}/status`).set(SK).send({ status: 'completed' });
+    s = (await request(app).get('/api/v1/requests/stats').set(admin())).body.data;
+    expect(s.completion_rate).toBe(50);
+    const t = (await request(app).get('/api/v1/requests/stats/timeline?days=7').set(admin())).body.data;
+    expect(t.series).toHaveLength(7);
+    expect(t.series.reduce((a, x) => a + x.requests, 0)).toBe(2);
+    const mine = (await request(app).get('/api/v1/requests/stats/timeline?days=7').set(recipient())).body.data;
+    expect(mine.series.reduce((a, x) => a + x.requests, 0)).toBe(1);
   });
 });

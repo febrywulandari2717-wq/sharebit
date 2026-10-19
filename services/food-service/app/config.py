@@ -33,5 +33,9 @@ class Config:
 
     REQUEST_SERVICE_KEY = os.getenv("REQUEST_SERVICE_KEY", "request-secret-key-2026")
 
+    # Audit log admin dikirim ke Donation Service (best effort; kosongkan key untuk menonaktifkan)
+    DONATION_SERVICE_URL = os.getenv("DONATION_SERVICE_URL", "http://127.0.0.1:8003").rstrip("/")
+    DONATION_SERVICE_KEY = os.getenv("DONATION_SERVICE_KEY", "donation-secret-key-2026")
+
     UPLOAD_DIR = resolve_path(os.getenv("UPLOAD_DIR", "uploads"))
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", "2097152"))

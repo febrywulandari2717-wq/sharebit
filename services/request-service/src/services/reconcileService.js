@@ -3,6 +3,7 @@ const repo = require('../repositories/requestRepository');
 const history = require('../repositories/historyRepository');
 const food = require('./foodServiceClient');
 const requestService = require('./requestService');
+const notifier = require('./notifier');
 
 /**
  * Pembersihan berkala:
@@ -36,6 +37,7 @@ async function run() {
         id: row.id, from: ['pending'], to: 'expired', actor: { id: null, role: 'system' }, reason: 'Melewati batas waktu',
       });
       await requestService.releaseStock(row.id);
+      notifier.notify(row.recipient_id, 'request_expired', 'Permintaan kedaluwarsa', `Permintaan "${row.food_title}" melewati batas waktu keputusan.`, 'my-requests.html');
       result.expired += 1;
     } catch (err) {
       /* status sudah berubah oleh proses lain */

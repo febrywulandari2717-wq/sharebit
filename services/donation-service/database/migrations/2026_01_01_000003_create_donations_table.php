@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('donations')) {
+            return; // database lama yang sudah memiliki tabel ini
+        }
+
         Schema::create('donations', function (Blueprint $table) {
             $table->char('id', 36)->primary();
             $table->char('request_id', 36)->unique();

@@ -25,6 +25,7 @@ module.exports = {
     request: process.env.REQUEST_SERVICE_KEY || 'request-secret-key-2026',
     donation: process.env.DONATION_SERVICE_KEY || 'donation-secret-key-2026',
   },
+  donationServiceUrl: (process.env.DONATION_SERVICE_URL || 'http://127.0.0.1:8003').replace(/\/$/, ''),
   foodServiceUrl: (process.env.FOOD_SERVICE_URL || 'http://127.0.0.1:5001').replace(/\/$/, ''),
   httpTimeoutMs: parseInt(process.env.HTTP_TIMEOUT_MS || '5000', 10),
   reconcileIntervalSeconds: parseInt(process.env.RECONCILE_INTERVAL_SECONDS || '60', 10),

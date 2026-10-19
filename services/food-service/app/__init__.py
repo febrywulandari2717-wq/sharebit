@@ -40,6 +40,7 @@ def create_app(config_class=Config):
     from .routes.foods import foods_bp
     from .routes.health import health_bp
     from .routes.internal_reservations import internal_bp
+    from .routes.public import public_bp
     from .routes.uploads import uploads_bp
     from .utils.errors import register_error_handlers
 
@@ -47,6 +48,7 @@ def create_app(config_class=Config):
     app.register_blueprint(uploads_bp)
     app.register_blueprint(categories_bp, url_prefix="/api/v1")
     app.register_blueprint(foods_bp, url_prefix="/api/v1")
+    app.register_blueprint(public_bp, url_prefix="/api/v1/public")
     app.register_blueprint(internal_bp, url_prefix="/internal/v1")
     register_error_handlers(app)
 
@@ -56,6 +58,7 @@ def create_app(config_class=Config):
         from . import models  # noqa: F401
 
         db.create_all()
+        models.ensure_columns()
         models.seed_categories()
 
     return app

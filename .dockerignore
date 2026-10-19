@@ -1,0 +1,10 @@
+.git
+**/.env
+**/.venv
+**/node_modules
+**/vendor
+**/__pycache__
+**/.pytest_cache
+**/coverage
+**/tests
+frontend/mobile/node_modules

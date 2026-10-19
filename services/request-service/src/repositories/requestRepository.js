@@ -103,7 +103,35 @@ async function findNeedingRelease(conn, limit = 100) {
   return rows;
 }
 
+async function dailyCreated(conn, { recipientId, donorId, days }) {
+  const where = ["created_at >= (UTC_DATE() - INTERVAL ? DAY)", `status NOT IN (${HIDDEN.map(() => '?').join(',')})`];
+  const values = [days - 1, ...HIDDEN];
+  if (recipientId) { where.push('recipient_id = ?'); values.push(recipientId); }
+  if (donorId) { where.push('donor_id = ?'); values.push(donorId); }
+  const [rows] = await conn.query(
+    `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS d, COUNT(*) AS n FROM requests WHERE ${where.join(' AND ')} GROUP BY d`, values);
+  return rows;
+}
+
+async function listActivity(conn, { recipientId, donorId, from, to, status, page, perPage }) {
+  const where = [`r.status NOT IN (${HIDDEN.map(() => '?').join(',')})`];
+  const values = [...HIDDEN];
+  if (recipientId) { where.push('r.recipient_id = ?'); values.push(recipientId); }
+  if (donorId) { where.push('r.donor_id = ?'); values.push(donorId); }
+  if (from) { where.push('h.at >= ?'); values.push(from); }
+  if (to) { where.push('h.at <= ?'); values.push(to); }
+  if (status) { where.push('h.to_status = ?'); values.push(status); }
+  const clause = where.join(' AND ');
+  const join = 'FROM request_history h JOIN requests r ON r.id = h.request_id';
+  const [[{ total }]] = await conn.query(`SELECT COUNT(*) AS total ${join} WHERE ${clause}`, values);
+  const [rows] = await conn.query(
+    `SELECT h.request_id, r.food_title, r.quantity, h.from_status, h.to_status, h.actor_id, h.actor_role, h.reason, h.at ${join}
+     WHERE ${clause} ORDER BY h.at DESC, h.id DESC LIMIT ? OFFSET ?`, [...values, perPage, (page - 1) * perPage]);
+  return { rows, total: Number(total) };
+}
+
 module.exports = {
+  dailyCreated, listActivity,
   ACTIVE, ALL_STATUSES, HIDDEN,
   insertReserving, findById, findByKey, deleteById, changeStatus,
   list, countByStatus, findStaleReserving, findExpiredPending, findNeedingRelease,

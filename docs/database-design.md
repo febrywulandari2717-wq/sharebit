@@ -22,3 +22,19 @@ Indeks unik: `uq_idempotency(idempotency_key)`, `uq_active_request(recipient_id,
 
 ## Database uji
 `sharebite_food_test`, `sharebite_request_test`, `sharebite_donation_test` (dibuat oleh `setup-database.sql`). Pengujian otomatis menghapus/menulis ulang isinya; jangan dipakai untuk data asli.
+
+---
+# Perubahan v1.1 (semua aditif; data lama tidak dihapus)
+**sharebite_food** — `foods.latitude`, `foods.longitude` (DOUBLE NULL), ditambahkan otomatis saat Food Service start bila belum ada.
+
+**sharebite_donation** (Laravel migration `2026_10_20_*`, aman dijalankan di database lama; migrasi awal kini dilewati bila tabelnya sudah ada)
+| Tabel / kolom | Keterangan |
+|---|---|
+| `users.notify_enabled`, `users.leaderboard_visible` | preferensi, default aktif |
+| `donations.completed_at`, `donations.reminded_at` | waktu selesai (dipakai statistik/poin/kampanye) dan penanda pengingat terkirim |
+| `favorites` | `user_id, food_id, food_title, created_at`, UNIQUE(user_id, food_id) |
+| `notifications` | `user_id, type, title, body, link, read_at, created_at` |
+| `reports` | `reporter_id, target_type, target_id, reason, details, status, admin_note, handled_by, handled_at` |
+| `audit_logs` | `actor_id, actor_role, action, target_type, target_id, meta(JSON tanpa rahasia), ip, created_at` |
+| `campaigns`, `campaign_participants` | judul, target porsi, periode, status; UNIQUE(campaign_id, user_id) |
+| `point_events` | `user_id, donation_id, type, points, portions, created_at`, UNIQUE(user_id, donation_id, type) |

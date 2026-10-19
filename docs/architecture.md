@@ -4,7 +4,7 @@ ShareBite adalah platform berbagi makanan berlebih. Backend dipecah menjadi **ti
 
 ```mermaid
 flowchart LR
-  W[Website HTML/CSS/JS :5500] -->|REST JSON + JWT| F
+  W[Website HTML/CSS/JS :8080] -->|REST JSON + JWT| F
   W --> R
   W --> D
   A[Android React Native Expo] -->|REST JSON + JWT| F
@@ -12,7 +12,7 @@ flowchart LR
   A --> D
   F[Food Service<br/>Python Flask :5001] --- FD[(sharebite_food)]
   R[Request Service<br/>Node.js Express :5002] --- RD[(sharebite_request)]
-  D[Donation + Identity Service<br/>PHP Laravel :5003] --- DD[(sharebite_donation)]
+  D[Donation + Identity Service<br/>PHP Laravel :8003] --- DD[(sharebite_donation)]
   R -->|reservasi stok<br/>X-Service-Key| F
   D -->|verifikasi & callback status<br/>X-Service-Key| R
 ```
@@ -21,7 +21,7 @@ flowchart LR
 |---|---|---|---|---|
 | Food Service | Python 3 + Flask + SQLAlchemy | 5001 | `sharebite_food` | makanan, kategori, foto, stok, pencarian, reservasi stok |
 | Request Service | Node.js + Express + mysql2 | 5002 | `sharebite_request` | permintaan, mesin status, riwayat, orkestrasi reservasi |
-| Donation Service | PHP + Laravel | 5003 | `sharebite_donation` | registrasi, login, JWT, pengguna, donasi, jadwal, serah terima |
+| Donation Service | PHP + Laravel | 8003 | `sharebite_donation` | registrasi, login, JWT, pengguna, donasi, jadwal, serah terima |
 
 ## Keputusan desain
 
@@ -54,3 +54,13 @@ reserving → failed (internal, tidak tampil di daftar)
 ## Batasan yang disengaja
 - Token akses yang sudah terbit tetap valid di Food/Request Service sampai kedaluwarsa (maks. 15 menit) walau akun dinonaktifkan; Donation Service langsung menolak. Refresh token pengguna nonaktif dicabut.
 - Menonaktifkan donor tidak otomatis menutup makanan atau menolak permintaan miliknya (admin memutuskan manual).
+
+---
+## Tambahan v1.1: fitur sosial dan moderasi
+- **Pemilik data:** notifikasi, favorit, laporan, audit, kampanye, dan poin berada di Donation Service (Laravel) karena terkait akun pengguna; tidak ada duplikasi tabel di service lain.
+- **Notifikasi lintas service:** Request Service memanggil `POST /api/v1/internal/notifications` (X-Service-Key) saat ada permintaan baru, persetujuan, penolakan, pembatalan, atau kedaluwarsa. Panggilan bersifat *best effort* — kegagalan hanya dicatat dan tidak menggagalkan operasi utama. Donation Service membuat notifikasi donasi sendiri (jadwal, konfirmasi, selesai, batal, pengingat).
+- **Audit log:** aksi admin di Donation Service dicatat langsung; aksi admin di Food/Request Service dikirim ke `POST /api/v1/internal/audit`. Meta dibersihkan dari kunci rahasia (password, token, secret, key).
+- **Poin & statistik hanya dari donasi *selesai***; `donations.completed_at` dipakai untuk periode kampanye, peringkat bulanan, dan grafik.
+- **Peta:** koordinat opsional di `foods`; jarak dihitung di database (haversine). Tampilan peta memakai Leaflet + OpenStreetMap, dengan fallback daftar alamat.
+- **Pengingat pengambilan:** `php artisan donations:remind` (dijadwalkan tiap jam oleh `schedule:work`); satu kali per donasi (`reminded_at`).
+- **Frontend:** tanpa framework/Bootstrap; satu design system (`css/style.css`), kerangka halaman (`js/shell.js`) menyediakan navbar publik, sidebar per peran, breadcrumb, guard peran, dan polling notifikasi.
