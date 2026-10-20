@@ -24,7 +24,5 @@ docker compose up -d --build        # lalu buka http://localhost:8080
 Detail, alamat, dan status verifikasi: [docs/docker.md](docs/docker.md). Hentikan stack XAMPP/native (`stop-all.bat`) sebelum memakai Docker karena port sama.
 
 ## Dokumentasi
-[Docker](docs/docker.md) · [Laporan pengembangan](docs/laporan-pengembangan.md) · [Arsitektur](docs/architecture.md) · [Kontrak API](docs/api-contracts.md) · [Database](docs/database-design.md) · [Setup lokal](docs/setup-local.md) · [Pengujian](docs/testing.md) · [Panduan demo](docs/demo-guide.md) · [Checklist](docs/checklist.md)
+[Docker](docs/docker.md) · [Laporan pengembangan](docs/laporan-pengembangan.md) · [Arsitektur](docs/architecture.md) · [Kontrak API](docs/api-contracts.md) · [Database](docs/database-design.md) · [Setup lokal](docs/setup-local.md) · [Panduan demo](docs/demo-guide.md) ·
 
-## Status verifikasi
-Food 39 · Request 47 · Laravel 49 tes lulus; E2E lintas service 102 pemeriksaan lulus; 44 uji pemuatan halaman website lulus. Interaksi di browser sungguhan dan aplikasi Android belum diuji manual — lihat [docs/testing.md](docs/testing.md).
