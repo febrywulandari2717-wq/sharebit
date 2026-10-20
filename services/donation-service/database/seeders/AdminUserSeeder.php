@@ -10,9 +10,9 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(['email' => 'admin@sharebite.local'], [
+        User::firstOrCreate(['email' => env('ADMIN_EMAIL', 'admin@sharebite.local')], [
             'name' => 'Admin ShareBite',
-            'password_hash' => Hash::make('Admin12345'),
+            'password_hash' => Hash::make(env('ADMIN_PASSWORD', 'Admin12345')),
             'role' => 'admin',
             'is_active' => true,
         ]);

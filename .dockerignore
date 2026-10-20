@@ -1,10 +1,11 @@
+# Konteks build root hanya dipakai image web; service memakai konteks foldernya sendiri.
 .git
-**/.env
-**/.venv
+services
+frontend/mobile
+keys
+tests
+docs
+*.sql
+*.bat
 **/node_modules
-**/vendor
-**/__pycache__
-**/.pytest_cache
-**/coverage
-**/tests
-frontend/mobile/node_modules
+**/.env

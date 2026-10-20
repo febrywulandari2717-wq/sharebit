@@ -1,6 +1,6 @@
 # ShareBite
 
-Platform food-sharing untuk berbagi makanan berlebih yang masih layak dikonsumsi. Fitur mencakup marketplace makanan, manajemen donasi, reservasi dan pengambilan, komunitas (kampanye, poin, badge, peringkat), notifikasi, analitik dampak, serta moderasi admin. Proyek mata kuliah Cloud Computing.
+Platform food-sharing: marketplace makanan berlebih, manajemen donasi, reservasi & pengambilan, komunitas (kampanye, poin, badge, peringkat), notifikasi, analitik dampak, serta moderasi admin. Proyek mata kuliah Cloud Computing.
 
 | Bagian | Teknologi | Lokasi | Port |
 |---|---|---|---|
@@ -12,23 +12,19 @@ Platform food-sharing untuk berbagi makanan berlebih yang masih layak dikonsumsi
 | Database | MySQL XAMPP — 3 database terpisah | – | 3306 |
 
 ## Menjalankan (Windows)
+- **Sudah punya versi sebelumnya?** Ekstrak zip *menimpa* folder lama (file `.env`, `vendor/`, `node_modules/`, `.venv/`, kunci di `keys/`, dan data database tidak ikut ditimpa/dihapus), lalu jalankan **`update.bat`** (sinkron `.env`, `composer install`, `npm install`, `php artisan migrate`). Setelah itu `start-all.bat`.
+- **Instalasi baru:** Start MySQL XAMPP → `setup.bat` → `start-all.bat` (membuka http://127.0.0.1:8080).
 
-- **Sudah punya versi sebelumnya?** Ekstrak ZIP dengan menimpa folder lama. Pastikan file `.env`, folder `vendor/`, `node_modules/`, `.venv/`, kunci di `keys/`, dan data database tidak ikut ditimpa atau dihapus. Jalankan `update.bat` untuk sinkronisasi `.env`, `composer install`, `npm install`, dan `php artisan migrate`. Setelah selesai, jalankan `start-all.bat`.
-- **Instalasi baru:** Jalankan MySQL XAMPP, lalu `setup.bat` dan `start-all.bat`. Website dapat diakses melalui http://127.0.0.1:8080.
+Akun: admin `admin@sharebite.local` / `Admin12345`; demo `donor@sharebite.local`, `penerima@sharebite.local` / `Rahasia123`. Pengingat pengambilan: `php artisan schedule:work` (opsional) atau `php artisan donations:remind`.
 
-Akun demo:
-
-- Admin: `admin@sharebite.local` / `Admin12345`
-- Donor: `donor@sharebite.local` / `Rahasia123`
-- Penerima: `penerima@sharebite.local` / `Rahasia123`
-
-Pengingat pengambilan dapat dijalankan melalui `php artisan schedule:work` (opsional) atau `php artisan donations:remind`.
+## Docker Compose (alternatif tanpa XAMPP)
+```bash
+docker compose up -d --build        # lalu buka http://localhost:8080
+```
+Detail, alamat, dan status verifikasi: [docs/docker.md](docs/docker.md). Hentikan stack XAMPP/native (`stop-all.bat`) sebelum memakai Docker karena port sama.
 
 ## Dokumentasi
+[Docker](docs/docker.md) · [Laporan pengembangan](docs/laporan-pengembangan.md) · [Arsitektur](docs/architecture.md) · [Kontrak API](docs/api-contracts.md) · [Database](docs/database-design.md) · [Setup lokal](docs/setup-local.md) · [Pengujian](docs/testing.md) · [Panduan demo](docs/demo-guide.md) · [Checklist](docs/checklist.md)
 
-- [Laporan pengembangan](docs/laporan-pengembangan.md)
-- [Arsitektur](docs/architecture.md)
-- [Kontrak API](docs/api-contracts.md)
-- [Database](docs/database-design.md)
-- [Setup lokal](docs/setup-local.md)
-- [Panduan demo](docs/demo-guide.md)
+## Status verifikasi
+Food 39 · Request 47 · Laravel 49 tes lulus; E2E lintas service 102 pemeriksaan lulus; 44 uji pemuatan halaman website lulus. Interaksi di browser sungguhan dan aplikasi Android belum diuji manual — lihat [docs/testing.md](docs/testing.md).

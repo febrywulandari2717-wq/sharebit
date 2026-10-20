@@ -1,4 +1,3 @@
 @echo off
-cd /d "%~dp0"
-echo Menghentikan container tanpa menghapus database atau volume...
 docker compose down
+echo Selesai (data tetap ada). Untuk menghapus data: docker compose down -v

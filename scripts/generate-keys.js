@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const dir = path.join(__dirname, '..', 'keys');
+const dir = process.env.KEYS_DIR || path.join(__dirname, '..', 'keys');
 const priv = path.join(dir, 'jwt_private.pem');
 const pub = path.join(dir, 'jwt_public.pem');
 
@@ -18,6 +18,7 @@ const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
   privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 });
 fs.mkdirSync(dir, { recursive: true });
-fs.writeFileSync(priv, privateKey);
-fs.writeFileSync(pub, publicKey);
-console.log('Kunci dibuat di folder keys/ (jwt_private.pem, jwt_public.pem).');
+// mode 0644 agar dapat dibaca user non-root pada container lain (volume hanya dipakai di jaringan Compose)
+fs.writeFileSync(priv, privateKey, { mode: 0o644 });
+fs.writeFileSync(pub, publicKey, { mode: 0o644 });
+console.log(`Kunci dibuat di ${dir} (jwt_private.pem, jwt_public.pem).`);

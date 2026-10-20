@@ -1,5 +1,6 @@
 // Uji asap halaman website: memuat setiap halaman di DOM virtual (jsdom) terhadap backend yang berjalan,
 // lalu memastikan tidak ada error JavaScript dan konten tampil. Jalankan:  node tests/e2e/smoke-web.js
+// Mode Docker/gateway: SMOKE_CONFIG=docker/web/config.js SMOKE_ORIGIN=http://127.0.0.1:8080 DONATION_URL=http://127.0.0.1:8080/identity
 // Butuh:  npm install jsdom@24  (di folder mana pun; atur NODE_PATH bila perlu)
 const fs = require('fs');
 const path = require('path');
@@ -16,6 +17,7 @@ async function login(email, password) {
 class Loader extends ResourceLoader {
   fetch(url) {
     const u = new URL(url);
+    if (u.hostname === 'smoke.local' && u.pathname === '/js/config.js' && process.env.SMOKE_CONFIG) return Promise.resolve(fs.readFileSync(process.env.SMOKE_CONFIG));
     if (u.hostname === 'smoke.local') return Promise.resolve(fs.readFileSync(path.join(WEB, u.pathname)));
     return Promise.resolve(Buffer.from('')); // font/CDN eksternal diabaikan
   }
@@ -36,7 +38,7 @@ async function open(page, session, query = '') {
   const html = fs.readFileSync(path.join(WEB, `${page}.html`), 'utf8');
   const dom = new JSDOM(html, { url: `http://smoke.local/${page}.html${query}`, runScripts: 'dangerously', resources: new Loader(), pretendToBeVisual: true, virtualConsole: vc,
     beforeParse(w) {
-      w.fetch = (u, o) => fetch(u, o); w.FormData = FormData; w.Blob = Blob; w.URL.createObjectURL = () => 'blob:x';
+      w.fetch = (u, o) => fetch(new URL(u, process.env.SMOKE_ORIGIN || 'http://127.0.0.1').href, o); w.FormData = FormData; w.Blob = Blob; w.URL.createObjectURL = () => 'blob:x';
       w.scrollTo = () => {}; w.crypto.randomUUID = () => require('crypto').randomUUID();
       if (session) { w.localStorage.setItem('sb_access', session.access_token); w.localStorage.setItem('sb_refresh', session.refresh_token); w.localStorage.setItem('sb_user', JSON.stringify(session.user)); }
       w.addEventListener('error', (e) => errors.push(`${e.message} @${e.filename}:${e.lineno}`));
